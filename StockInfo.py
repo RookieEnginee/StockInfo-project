@@ -9,7 +9,12 @@ import time
 from datetime import datetime
 import pytz
 from post_market_info import show_post_market_info
+import ssl
+import urllib3
 
+
+ssl._create_default_https_context = ssl._create_unverified_context
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # 停止更新的旗標
 is_updating = False
@@ -89,17 +94,17 @@ def get_stock_code(User_input_code):
     tpee_url = "https://www.tpex.org.tw/openapi/v1/tpex_esb_latest_statistics"
 
     # 取得上市股票資料
-    twse_response = requests.get(twse_url)
+    twse_response = requests.get(twse_url, verify=False)
     twse_response.raise_for_status()
     twse_data = twse_response.json()
 
     # 取得上櫃股票資料
-    tpex_response = requests.get(tpex_url)
+    tpex_response = requests.get(tpex_url, verify=False)
     tpex_response.raise_for_status()
     tpex_data = tpex_response.json()
 
     # 取得興櫃股票資料
-    tpee_response = requests.get(tpee_url)
+    tpee_response = requests.get(tpee_url, verify=False)
     tpee_response.raise_for_status()
     tpee_data = tpee_response.json()
 
@@ -153,7 +158,7 @@ def getpattern():
         "change_up": r'class="Jc\(fe\) Fz\(20px\) Lh\(1.2\) Fw\(b\) D\(f\) Ai\(c\) C\(\$c-trend-up\)">([^<]+)</span>',
         "change_down": r'class="Jc\(fe\) Fz\(20px\) Lh\(1.2\) Fw\(b\) D\(f\) Ai\(c\) C\(\$c-trend-down\)">([^<]+)</span>',
         "change_no_change": r'class="Jc\(fe\) Fz\(20px\) Lh\(1.2\) Fw\(b\) D\(f\) Ai\(c\)">([^<]+)</span>',
-        "stock_name": r'class="C\(\$c-link-text\) Fw\(b\) Fz\(24px\) Mend\(8px\)">([^<]+)</h1>',
+        "stock_name": r'class="C\(\$c-link-text\)[^"]*">([^<]+)</h1>',
         "volume": r'class="Fz\(16px\) C\(\$c-link-text\) Mb\(4px\)">([^<]+)</span>',
         "US_volume": r'class="Fw\(600\) Fz\(16px\)--mobile Fz\(14px\)">([^<]+)</span>',
         "change_value_up": r'class="Fw\(600\) Fz\(16px\)--mobile Fz\(14px\) D\(f\) Ai\(c\) C\(\$c-trend-up\)"><span class="Mend\(4px\) Bds\(s\)" style="border-color:transparent transparent #ff333a transparent;border-width:0 5px 7px 5px"></span>([^<]+)</span>',
@@ -170,7 +175,7 @@ def update_stock_data(stock_code):
     yahoo_stock_url = f"https://tw.stock.yahoo.com/q/q?s={stock_code}"
     pattern = getpattern()
     try:
-        response = requests.get(yahoo_stock_url, timeout=10)
+        response = requests.get(yahoo_stock_url, timeout=10, verify=False)
         html_content = response.text
         # 抓取成交量
         stock_volume = "無法找到成交量"

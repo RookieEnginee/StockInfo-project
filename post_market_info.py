@@ -93,7 +93,7 @@ def calculate_End_date():
 
         try:
             # 發送 GET 請求下載 CSV 資料
-            response = requests.get(url, timeout=5)  # 設置超時為 5 秒
+            response = requests.get(url, timeout=15, verify=False)  # 設置超時為 5 秒
         except requests.RequestException as e:
             # 捕獲請求異常
             print(f"請求失敗: {e}")
@@ -181,12 +181,12 @@ def calculate_volume_difference(settingparams,result_text,start_date,end_date,ra
     tpex_url = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 
     # 取得上市股票資料
-    twse_response = requests.get(twse_url)
+    twse_response = requests.get(twse_url, verify=False)
     twse_response.raise_for_status()
     twse_data = twse_response.json()
 
     # 取得上櫃股票資料
-    tpex_response = requests.get(tpex_url)
+    tpex_response = requests.get(tpex_url, verify=False)
     tpex_response.raise_for_status()
     tpex_data = tpex_response.json()
 
