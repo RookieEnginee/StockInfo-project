@@ -11,7 +11,7 @@ import pytz
 from post_market_info import show_post_market_info
 import ssl
 import urllib3
-
+from functools import lru_cache
 
 ssl._create_default_https_context = ssl._create_unverified_context
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -85,7 +85,50 @@ def get_stock_info(stock_code,patterns):
     stock_code_label.config(text=f"股票名稱: {stock_name} ({stock_code})")
         
 
+# 快取 API 結果，避免每次呼叫都重新抓取
+@lru_cache(maxsize=1)
+def load_all_stock_data():
+    urls = {
+        "twse": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+        "tpex": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes",
+        "tpee": "https://www.tpex.org.tw/openapi/v1/tpex_esb_latest_statistics"
+    }
+
+    data = {}
+
+    for key, url in urls.items():
+        r = requests.get(url, verify=False)
+        r.raise_for_status()
+        data[key] = r.json()
+
+    return data
+
 def get_stock_code(User_input_code):
+
+    if not User_input_code:
+        return User_input_code
+
+    # 一次抓取所有資料（已自動快取）
+    stock_data = load_all_stock_data()
+
+    # 上市
+    for item in stock_data["twse"]:
+        if item.get("Name") == User_input_code or item.get("Code") == User_input_code:
+            return item["Code"]
+
+    # 上櫃
+    for item in stock_data["tpex"]:
+        if item.get("CompanyName") == User_input_code or item.get("SecuritiesCompanyCode") == User_input_code:
+            return item["SecuritiesCompanyCode"]
+
+    # 興櫃
+    for item in stock_data["tpee"]:
+        if item.get("CompanyName") == User_input_code or item.get("SecuritiesCompanyCode") == User_input_code:
+            return item["SecuritiesCompanyCode"]
+
+    return User_input_code
+
+#def get_stock_code(User_input_code):
     # 台灣證券交易所 API（上市股票）
     twse_url = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
     # 台灣櫃買中心 API（上櫃股票

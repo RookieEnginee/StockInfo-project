@@ -118,46 +118,45 @@ def calculate_End_date():
 
 
 def process_stock(item, raw_data, days, start_date, end_date):
-    # 確保取到足夠的天數，並計算過去 days 天的平均成交量
-    average_trade_volume ,yesterday_volume ,stock_high_price= get_stock_data(item["Code"], start_date, end_date, 0, days)
+    # 計算平均成交量
+    average_trade_volume, yesterday_volume, stock_high_price = get_stock_data(
+        item["Code"], start_date, end_date, 0, days
+    )
 
-    # 改進的正則表達式來匹配兩種格式
+    # 成交量正則
     pattern = rf'="{item["Code"]}","[^"]*","([\d,]+)"|"{item["Code"]}","[^"]*","([\d,]+)"'
     match = re.search(pattern, raw_data)
+    if not match:
+        print(f"未找到股票 {item['Code']} 的成交量資料")
+        return []
 
-    # 正則表達式來匹配相應的資料
+    trade_volume = match.group(1) or match.group(2)
+    trade_volume = int(trade_volume.replace(",", "")) // 1000
+
+    # 價格正則
     patternPrice = rf'"{item["Code"]}","[^"]*","[^"]*","[^"]*","[^"]*","[^"]*","[^"]*","[^"]*","([^"]+)",'
-
-    # 查找資料中對應股票代碼的行
     matches = re.findall(patternPrice, raw_data)
+    if not matches:
+        print(f"未找到股票 {item['Code']} 的價格資料")
+        return []
     StockPrice = matches[0]
-    #print(f"當日價格: {matches[0]}")
-    if match:
-        # 因為我們有兩個捕捉組，用 or 運算找到匹配的非空值
-        trade_volume = match.group(1) or match.group(2)
 
-        # 將數字字串去掉逗號並轉換為數字格式
-        trade_volume = int(trade_volume.replace(",", "")) / 1000
-        trade_volume = int(trade_volume)  # 去除小數部分
-
-        difference = trade_volume - average_trade_volume
-        return {
-            "股票代碼": f"{item['Code']}",
-            "股票名字": f"{item['Name']}",
-            "股票價格": StockPrice,
-            "當日成交量": trade_volume,
-            "過去成交量平均": average_trade_volume,
-            "成交量差異": difference,
-            "前一日成交量" : yesterday_volume,
-            "最高價" : stock_high_price 
-        }
-
-    return []
+    difference = trade_volume - average_trade_volume
+    return {
+        "股票代碼": item['Code'],
+        "股票名字": item['Name'],
+        "股票價格": StockPrice,
+        "當日成交量": trade_volume,
+        "過去成交量平均": average_trade_volume,
+        "成交量差異": difference,
+        "前一日成交量": yesterday_volume,
+        "最高價": stock_high_price
+    }
 
 def process_batch(batch, raw_data, days, start_date, end_date,progress_bar):
     stockAlldata = []
     i = 0
-    i = (100/(len(batch)*2))  # 計算迭代次數
+    i = (100/(len(batch)*1))  # 計算迭代次數
     
     for item in batch:
         stockdata = process_stock(item, raw_data, days, start_date, end_date)
@@ -197,14 +196,14 @@ def calculate_volume_difference(settingparams,result_text,start_date,end_date,ra
         filtered_data = twse_data
 
     # 分批處理股票資料
-    batch_size = math.ceil(len(filtered_data) / 2)
+    batch_size = math.ceil(len(filtered_data) / 1)
     batches = [filtered_data[i:i + batch_size] for i in range(0, len(filtered_data), batch_size)]
 
     # 結果存放在這裡
     all_results = []
 
     # 使用 ThreadPoolExecutor 處理
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=1) as executor:
         futures = [executor.submit(process_batch, batch, raw_data, settingparams["days"], start_date, end_date,progress_bar) for batch in batches]
         # 等待所有執行緒完成並收集結果
         for future in futures:
